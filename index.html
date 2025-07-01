@@ -1,0 +1,708 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jogo do Algoritmo de Euclides</title>
+    <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        /* style.css - Inspirado no design do IMPA */
+        :root {
+            --impa-blue-dark: #003366; /* Azul marinho */
+            --impa-blue-medium: #0056b3; /* Azul médio */
+            --impa-gray-dark: #333333; /* Cinza escuro */
+            --impa-gray-medium: #666666; /* Cinza médio */
+            --impa-gray-light: #eeeeee; /* Cinza muito claro */
+            --impa-white: #ffffff; /* Branco */
+            --impa-green: #4CAF50; /* Verde para sucesso */
+            --impa-red: #F44336; /* Vermelho para erro */
+            --impa-yellow: #FFC107; /* Amarelo para destaque */
+        }
+
+        body {
+            font-family: 'Open Sans', sans-serif;
+            background-color: var(--impa-gray-light); /* Fundo cinza muito claro */
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            color: var(--impa-gray-dark); /* Texto principal cinza escuro */
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        header {
+            margin-bottom: 20px;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+            background-color: var(--impa-white); /* Fundo branco para o cabeçalho */
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05); /* Sombra suave */
+        }
+
+        h1 {
+            color: var(--impa-blue-dark); /* Título em azul marinho */
+            font-size: 2.8em;
+            margin-bottom: 10px;
+            font-weight: 700; /* Mais negrito */
+        }
+
+        main {
+            background-color: var(--impa-white); /* Fundo branco para o conteúdo principal */
+            border-radius: 12px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08); /* Sombra um pouco mais pronunciada para o main */
+            padding: 30px;
+            width: 90%;
+            max-width: 800px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        #problem-area {
+            font-size: 1.6em;
+            margin-bottom: 25px;
+            font-weight: 600; /* Semi-negrito */
+            color: var(--impa-gray-dark);
+            display: flex; /* Para alinhar o problema e a pontuação */
+            justify-content: space-between; /* Espaço entre eles */
+            width: 100%; /* Ocupa a largura total */
+            align-items: center;
+        }
+
+        #score-area {
+            font-size: 0.8em; /* Menor que o problema */
+            font-weight: 400;
+            color: var(--impa-gray-medium);
+            margin-left: 20px; /* Espaçamento do problema */
+        }
+
+        #game-board {
+            display: grid;
+            grid-template-rows: repeat(3, 1fr);
+            gap: 5px;
+            border: 1px solid var(--impa-gray-light); /* Borda muito sutil */
+            padding: 15px;
+            background-color: var(--impa-white); /* Fundo branco para a tabela */
+            border-radius: 8px;
+            margin-bottom: 30px;
+            min-height: 180px;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        .board-cell {
+            min-width: 70px;
+            min-height: 50px;
+            border: 1px solid var(--impa-gray-light); /* Borda sutil para as células */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-color: var(--impa-white); /* Fundo branco para as células */
+            border-radius: 4px;
+            font-size: 1.1em;
+            color: var(--impa-gray-dark);
+            box-sizing: border-box;
+            text-align: center;
+        }
+
+        .board-cell.label {
+            min-width: 100px;
+            background-color: var(--impa-gray-light); /* Fundo cinza claro para rótulos */
+            border: 1px solid var(--impa-gray-medium); /* Borda um pouco mais visível */
+            font-weight: 600;
+            color: var(--impa-gray-dark);
+            cursor: default;
+        }
+
+        .board-cell.drag-over {
+            background-color: #e0f2f7; /* Azul claro sutil ao arrastar sobre */
+            border-color: var(--impa-blue-medium);
+        }
+
+        #puzzle-pieces-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-top: 20px;
+            padding: 20px;
+            background-color: var(--impa-gray-light); /* Fundo cinza claro para o container de peças */
+            border-radius: 8px;
+            width: 100%;
+            justify-content: center;
+            box-sizing: border-box;
+            border: 1px dashed var(--impa-gray-medium); /* Borda tracejada sutil */
+        }
+
+        #puzzle-pieces-container.drag-over {
+            background-color: #e6ffe6; /* Verde muito claro para indicar drop */
+            border-color: var(--impa-green);
+        }
+
+        .puzzle-piece {
+            min-width: 70px;
+            height: 50px;
+            /* As cores de fundo e borda padrão serão sobrescritas pelas classes de tipo */
+            background-color: var(--impa-white); 
+            border: 1px solid var(--impa-gray-medium); 
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            cursor: grab;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1); /* Sombra mais suave */
+            transition: transform 0.15s ease-in-out, box-shadow 0.15s ease-in-out, background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+            font-size: 1.2em;
+            color: var(--impa-gray-dark);
+            padding: 0 10px;
+            box-sizing: border-box;
+        }
+
+        .puzzle-piece:active {
+            cursor: grabbing;
+            transform: scale(1.02); /* Escala menor */
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+        }
+
+        .puzzle-piece.dragging {
+            opacity: 0.7;
+        }
+
+        .puzzle-piece.fixed {
+            cursor: default;
+            box-shadow: none;
+            border: 1px solid var(--impa-gray-light);
+            background-color: var(--impa-gray-light); /* Fundo cinza claro para fixas */
+            color: var(--impa-gray-medium); /* Texto mais suave para fixas */
+        }
+
+        /* Cores das peças inseridas (e agora também das peças no container) - tons mais suaves */
+        .puzzle-piece.inserted-value { /* Linha 1 */
+            background-color: #e8f5e9; /* Verde muito claro */
+            border-color: #81c784; /* Verde suave */
+            color: #2e7d32; /* Verde escuro */
+        }
+
+        .puzzle-piece.inserted-remainder { /* Linha 2 */
+            background-color: #ffebee; /* Vermelho muito claro */
+            border-color: #ef9a9a; /* Vermelho suave */
+            color: #c62828; /* Vermelho escuro */
+        }
+
+        .puzzle-piece.inserted-quotient { /* Linha 0 */
+            background-color: #fffde7; /* Amarelo muito claro */
+            border-color: #fff176; /* Amarelo suave */
+            color: #fbc02d; /* Amarelo escuro */
+        }
+
+
+        #controls {
+            margin-top: 30px;
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        #controls button, #difficulty-select {
+            background-color: var(--impa-blue-dark); /* Azul marinho */
+            color: var(--impa-white);
+            border: none;
+            padding: 12px 25px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 1.1em;
+            font-weight: 600;
+            transition: background-color 0.2s ease, transform 0.1s ease, box-shadow 0.2s ease;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); /* Sombra sutil */
+            appearance: none;
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            text-align: center;
+            line-height: normal;
+        }
+
+        #controls button:hover, #difficulty-select:hover {
+            background-color: var(--impa-blue-medium); /* Azul médio no hover */
+            transform: translateY(-1px);
+            box-shadow: 0 3px 6px rgba(0, 0, 0, 0.15);
+        }
+
+        #controls button:active, #difficulty-select:active {
+            transform: translateY(0);
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+
+        #difficulty-select-container {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 10px;
+            margin-bottom: 10px;
+        }
+
+        #difficulty-select-container label {
+            font-weight: 600;
+            color: var(--impa-gray-dark);
+            font-size: 1.1em;
+        }
+
+        #feedback-area {
+            margin-top: 25px;
+            font-weight: 600;
+            font-size: 1.3em;
+            text-align: center;
+        }
+
+        .correct {
+            color: var(--impa-green);
+        }
+
+        .incorrect {
+            color: var(--impa-red);
+        }
+
+        /* Responsividade */
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 2.2em;
+            }
+            #problem-area {
+                font-size: 1.3em;
+                flex-direction: column; /* Empilha em telas menores */
+                align-items: flex-start; /* Alinha à esquerda */
+            }
+            #score-area {
+                margin-left: 0; /* Remove margem lateral */
+                margin-top: 5px; /* Adiciona margem superior */
+            }
+            #game-board {
+                grid-template-columns: 90px repeat(auto-fit, minmax(60px, 1fr));
+                padding: 10px;
+            }
+            .board-cell, .puzzle-piece {
+                min-width: 60px;
+                height: 45px;
+                font-size: 1em;
+            }
+            .board-cell.label {
+                min-width: 90px;
+            }
+            #puzzle-pieces-container {
+                padding: 15px;
+            }
+            #controls button, #difficulty-select {
+                padding: 10px 20px;
+                font-size: 1em;
+            }
+            #controls {
+                flex-direction: column;
+                gap: 10px;
+            }
+            #difficulty-select-container {
+                margin-right: 0;
+                margin-bottom: 10px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            h1 {
+                font-size: 1.8em;
+            }
+            main {
+                padding: 20px;
+            }
+            #problem-area {
+                font-size: 1.1em;
+            }
+            #game-board {
+                gap: 3px;
+                grid-template-columns: 70px repeat(auto-fit, minmax(50px, 1fr));
+            }
+            .board-cell, .puzzle-piece {
+                min-width: 50px;
+                height: 35px;
+                font-size: 0.9em;
+            }
+            .board-cell.label {
+                min-width: 70px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Jogo do Algoritmo de Euclides</h1>
+        <div id="difficulty-select-container">
+            <label for="difficulty-select">Nível:</label>
+            <select id="difficulty-select">
+                <option value="fundamental">Fundamental</option>
+                <option value="medio" selected>Médio</option>
+            </select>
+        </div>
+    </header>
+    <main>
+        <section id="problem-area">
+            <p>Calcule o MDC de: <span id="current-numbers"></span></p>
+            <p id="score-area">Pontos: <span id="current-score">0</span></p>
+        </section>
+        <section id="game-board">
+            <!-- As células do tabuleiro serão geradas aqui pelo JavaScript -->
+        </section>
+        <section id="puzzle-pieces-container">
+            <!-- As peças do quebra-cabeça serão geradas aqui pelo JavaScript -->
+        </section>
+        <section id="controls">
+            <button id="check-button">Verificar</button>
+            <button id="show-answer-button">Mostrar Resposta</button>
+            <button id="new-game-button">Novo Jogo</button>
+        </section>
+        <section id="feedback-area">
+            <p id="message"></p>
+        </section>
+    </main>
+
+    <script>
+        // script.js
+        document.addEventListener('DOMContentLoaded', () => {
+            const currentNumbersSpan = document.getElementById('current-numbers');
+            const gameBoard = document.getElementById('game-board');
+            const puzzlePiecesContainer = document.getElementById('puzzle-pieces-container');
+            const checkButton = document.getElementById('check-button');
+            const showAnswerButton = document.getElementById('show-answer-button');
+            const newGameButton = document.getElementById('new-game-button');
+            const messageArea = document.getElementById('message');
+            const difficultySelect = document.getElementById('difficulty-select');
+            const currentScoreSpan = document.getElementById('current-score');
+
+            let currentProblem = {};
+            let draggedItem = null;
+            let score = 0;
+
+            function updateScoreDisplay() {
+                currentScoreSpan.textContent = score;
+            }
+
+            const difficultyLevels = {
+                fundamental: { min1: 20, max1: 100, min2: 10, max2: 50, minSteps: 2, maxSteps: 3 },
+                medio: { min1: 50, max1: 250, min2: 20, max2: 150, minSteps: 3, maxSteps: 5 }
+            };
+
+            function calculateEuclideanAlgorithm(a, b) {
+                let steps = [];
+                let currentA = a;
+                let currentB = b;
+
+                while (currentB !== 0) {
+                    let quotient = Math.floor(currentA / currentB);
+                    let remainder = currentA % currentB;
+                    steps.push({ a: currentA, b: currentB, quotient: quotient, remainder: remainder });
+                    currentA = currentB;
+                    currentB = remainder;
+                }
+                return { mdc: currentA, steps: steps, originalA: a, originalB: b };
+            }
+
+            // Função para gerar um novo problema (sem resetar a pontuação)
+            function generateNewProblem() {
+                const selectedDifficulty = difficultySelect.value;
+                const limits = difficultyLevels[selectedDifficulty];
+
+                let num1, num2, problemResult;
+                let attempts = 0;
+                const maxAttempts = 200;
+
+                do {
+                    num1 = Math.floor(Math.random() * (limits.max1 - limits.min1 + 1)) + limits.min1;
+                    num2 = Math.floor(Math.random() * (limits.max2 - limits.min2 + 1)) + limits.min2;
+                    if (num1 < num2) [num1, num2] = [num2, num2]; // Garante que num1 > num2
+                    
+                    problemResult = calculateEuclideanAlgorithm(num1, num2);
+                    attempts++;
+                } while ((problemResult.steps.length < limits.minSteps || problemResult.steps.length > limits.maxSteps) && attempts < maxAttempts);
+
+                if (attempts >= maxAttempts) {
+                    console.warn(`Não foi possível gerar um problema com ${limits.minSteps}-${limits.maxSteps} passos para o nível ${selectedDifficulty}. Gerando um problema padrão.`);
+                    num1 = 252; 
+                    num2 = 105;
+                    problemResult = calculateEuclideanAlgorithm(num1, num2);
+                }
+
+                currentNumbersSpan.textContent = `${num1}, ${num2}`;
+                currentProblem = problemResult;
+                
+                gameBoard.innerHTML = '';
+                puzzlePiecesContainer.innerHTML = '';
+                messageArea.textContent = '';
+
+                const numValueColumns = currentProblem.steps.length + 1; 
+                gameBoard.style.gridTemplateColumns = `100px repeat(${numValueColumns}, 1fr)`;
+
+                const correctBoardValues = Array(3).fill(null).map(() => Array(numValueColumns).fill(null));
+
+                correctBoardValues[1][0] = currentProblem.originalA;
+                correctBoardValues[1][1] = currentProblem.originalB;
+                correctBoardValues[2][1] = currentProblem.steps[0].remainder;
+
+                currentProblem.steps.forEach((step, colIndex) => {
+                    correctBoardValues[0][colIndex] = step.quotient; 
+                    if (colIndex > 0) {
+                        correctBoardValues[1][colIndex + 1] = currentProblem.steps[colIndex - 1].remainder;
+                        correctBoardValues[2][colIndex + 1] = step.remainder;
+                    }
+                });
+
+                correctBoardValues[2][numValueColumns - 1] = 0;
+
+                const rowLabels = ['Quociente', 'Valores', 'Resto'];
+
+                for (let row = 0; row < 3; row++) {
+                    const labelCell = document.createElement('div');
+                    labelCell.classList.add('board-cell', 'label');
+                    labelCell.textContent = rowLabels[row];
+                    gameBoard.appendChild(labelCell);
+
+                    for (let col = 0; col < numValueColumns; col++) {
+                        const cell = document.createElement('div');
+                        cell.classList.add('board-cell');
+                        cell.dataset.row = row;
+                        cell.dataset.col = col;
+                        
+                        const value = correctBoardValues[row][col];
+                        
+                        const isFixedCell = (row === 1 && col === 0) || (row === 1 && col === 1);
+
+                        if (value !== null) {
+                            cell.dataset.correctValue = value;
+                            if (isFixedCell) {
+                                const piece = document.createElement('div');
+                                piece.classList.add('puzzle-piece', 'fixed');
+                                piece.textContent = value;
+                                piece.draggable = false;
+                                piece.dataset.value = value;
+                                if (row === 0) piece.classList.add('inserted-quotient');
+                                else if (row === 1) piece.classList.add('inserted-value');
+                                else if (row === 2) piece.classList.add('inserted-remainder');
+
+                                cell.appendChild(piece);
+                            }
+                        } else {
+                            cell.dataset.correctValue = ''; 
+                        }
+
+                        if (cell.dataset.correctValue !== '' && !isFixedCell) {
+                            cell.addEventListener('dragover', handleDragOver);
+                            cell.addEventListener('drop', handleDrop);
+                            cell.addEventListener('dragleave', handleDragLeave);
+                        }
+                        gameBoard.appendChild(cell);
+                    }
+                }
+
+                let allValuesForPieces = [];
+                for (let row = 0; row < 3; row++) {
+                    for (let col = 0; col < numValueColumns; col++) {
+                        const value = correctBoardValues[row][col];
+                        const isFixedCell = (row === 1 && col === 0) || (row === 1 && col === 1);
+
+                        if (value !== null && value !== '' && !isFixedCell) {
+                            let type;
+                            if (row === 0) type = 'quotient';
+                            else if (row === 1) type = 'value';
+                            else if (row === 2) type = 'remainder';
+                            allValuesForPieces.push({ value: value, type: type });
+                        }
+                    }
+                }
+                
+                allValuesForPieces = shuffleArray(allValuesForPieces);
+
+                allValuesForPieces.forEach(item => {
+                    const piece = document.createElement('div');
+                    piece.classList.add('puzzle-piece');
+                    piece.textContent = item.value;
+                    piece.draggable = true;
+                    piece.dataset.value = item.value;
+                    piece.dataset.type = item.type;
+                    
+                    if (item.type === 'quotient') piece.classList.add('inserted-quotient');
+                    else if (item.type === 'value') piece.classList.add('inserted-value');
+                    else if (item.type === 'remainder') piece.classList.add('inserted-remainder');
+
+                    piece.addEventListener('dragstart', handleDragStart);
+                    puzzlePiecesContainer.appendChild(piece);
+                });
+            }
+
+            // Nova função para iniciar um novo jogo (resetando a pontuação)
+            function startNewGame() {
+                score = 0;
+                updateScoreDisplay();
+                generateNewProblem(); // Chama a função de geração de problema
+            }
+
+            function handleDragStart(e) {
+                if (e.target.classList.contains('fixed')) {
+                    e.preventDefault();
+                    return;
+                }
+                draggedItem = e.target;
+                e.dataTransfer.setData('text/plain', e.target.dataset.value);
+                e.dataTransfer.setData('text/type', e.target.dataset.type); 
+                setTimeout(() => {
+                    e.target.classList.add('dragging');
+                }, 0);
+            }
+
+            function handleDragOver(e) {
+                e.preventDefault();
+                if (e.target.classList.contains('board-cell') && e.target.dataset.correctValue !== '') {
+                    if (e.target.querySelector('.fixed')) {
+                        e.dataTransfer.dropEffect = 'none';
+                        return;
+                    }
+                    e.target.classList.add('drag-over');
+                } else if (e.target.id === 'puzzle-pieces-container') {
+                    e.target.classList.add('drag-over');
+                }
+            }
+
+            function handleDragLeave(e) {
+                e.target.classList.remove('drag-over');
+            }
+
+            function handleDrop(e) {
+                e.preventDefault();
+                e.target.classList.remove('drag-over');
+                
+                if (e.target.classList.contains('board-cell') && e.target.dataset.correctValue !== '') {
+                    if (e.target.querySelector('.fixed')) {
+                        return;
+                    }
+
+                    if (e.target.children.length > 0) {
+                        const oldPiece = e.target.children[0];
+                        oldPiece.classList.remove('inserted-value', 'inserted-remainder', 'inserted-quotient');
+                        puzzlePiecesContainer.appendChild(oldPiece);
+                    }
+                    e.target.appendChild(draggedItem);
+                    draggedItem.classList.remove('dragging');
+
+                } 
+                else if (e.target.id === 'puzzle-pieces-container') {
+                    if (draggedItem.parentNode && draggedItem.parentNode.classList.contains('board-cell')) {
+                        puzzlePiecesContainer.appendChild(draggedItem);
+                        draggedItem.classList.remove('dragging');
+                    }
+                }
+            }
+
+            function shuffleArray(array) {
+                for (let i = array.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [array[i], array[j]] = [array[j], array[i]];
+                }
+                return array;
+            }
+
+            function checkAnswer() {
+                let allCorrect = true;
+                const cells = gameBoard.querySelectorAll('.board-cell:not(.label):not(:has(.fixed))');
+                
+                cells.forEach(cell => {
+                    const expectedValue = String(cell.dataset.correctValue);
+                    let actualValue = '';
+
+                    if (expectedValue === '') {
+                        cell.classList.remove('incorrect');
+                        cell.classList.add('correct');
+                        return;
+                    }
+
+                    if (cell.children.length > 0 && cell.children[0].classList.contains('puzzle-piece')) {
+                        actualValue = String(cell.children[0].dataset.value);
+                    }
+
+                    if (actualValue === expectedValue) {
+                        cell.classList.remove('incorrect');
+                        cell.classList.add('correct');
+                    } else {
+                        cell.classList.remove('correct');
+                        cell.classList.add('incorrect');
+                        allCorrect = false;
+                    }
+                });
+
+                if (allCorrect) {
+                    messageArea.textContent = 'Parabéns! Resposta correta!';
+                    messageArea.classList.remove('incorrect');
+                    messageArea.classList.add('correct');
+                    score++; // Incrementa a pontuação
+                    updateScoreDisplay(); // Atualiza a exibição
+                    
+                    // Gera um novo problema automaticamente após o acerto
+                    setTimeout(() => {
+                        generateNewProblem(); 
+                    }, 1500); // Pequeno atraso para o usuário ver a mensagem de "correto"
+                    
+                } else {
+                    messageArea.textContent = 'Ops! Algumas peças estão no lugar errado ou faltando. Tente novamente.';
+                    messageArea.classList.remove('correct');
+                    messageArea.classList.add('incorrect');
+                }
+            }
+
+            function showAnswer() {
+                puzzlePiecesContainer.innerHTML = '';
+                messageArea.textContent = 'Aqui está a resposta correta.';
+                messageArea.classList.remove('incorrect');
+                messageArea.classList.add('correct');
+
+                const cells = gameBoard.querySelectorAll('.board-cell:not(.label)');
+                cells.forEach(cell => {
+                    while (cell.firstChild) {
+                        cell.removeChild(cell.firstChild);
+                    }
+
+                    const expectedValue = String(cell.dataset.correctValue);
+                    if (expectedValue !== '') {
+                        const piece = document.createElement('div');
+                        piece.classList.add('puzzle-piece', 'fixed');
+                        piece.textContent = expectedValue;
+                        piece.draggable = false;
+                        piece.dataset.value = expectedValue;
+                        
+                        const row = parseInt(cell.dataset.row);
+                        if (row === 0) piece.classList.add('inserted-quotient');
+                        else if (row === 1) piece.classList.add('inserted-value');
+                        else if (row === 2) piece.classList.add('inserted-remainder');
+
+                        cell.appendChild(piece);
+                    }
+                    cell.classList.remove('correct', 'incorrect');
+                });
+            }
+
+            checkButton.addEventListener('click', checkAnswer);
+            showAnswerButton.addEventListener('click', showAnswer);
+            newGameButton.addEventListener('click', startNewGame); // Chama a nova função para resetar e iniciar
+            difficultySelect.addEventListener('change', startNewGame); // Também reseta a pontuação ao mudar o nível
+
+            puzzlePiecesContainer.addEventListener('dragover', handleDragOver);
+            puzzlePiecesContainer.addEventListener('drop', handleDrop);
+            puzzlePiecesContainer.addEventListener('dragleave', handleDragLeave);
+
+            // Iniciar o primeiro jogo ao carregar a página
+            startNewGame();
+        });
+    </script>
+</body>
+</html>
