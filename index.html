@@ -121,9 +121,10 @@
             cursor: default;
         }
 
-        .board-cell.drag-over {
-            background-color: #e0f2f7; /* Azul claro sutil ao arrastar sobre */
-            border-color: var(--impa-blue-medium);
+        /* Novo estilo para célula alvo (point-and-click) */
+        .board-cell.target {
+            background-color: #e0f2f7; /* Azul claro sutil */
+            border: 2px dashed var(--impa-blue-medium); /* Borda tracejada para indicar alvo */
         }
 
         #puzzle-pieces-container {
@@ -140,15 +141,9 @@
             border: 1px dashed var(--impa-gray-medium); /* Borda tracejada sutil */
         }
 
-        #puzzle-pieces-container.drag-over {
-            background-color: #e6ffe6; /* Verde muito claro para indicar drop */
-            border-color: var(--impa-green);
-        }
-
         .puzzle-piece {
             min-width: 70px;
             height: 50px;
-            /* As cores de fundo e borda padrão serão sobrescritas pelas classes de tipo */
             background-color: var(--impa-white); 
             border: 1px solid var(--impa-gray-medium); 
             border-radius: 6px;
@@ -156,7 +151,9 @@
             align-items: center;
             justify-content: center;
             font-weight: 600;
-            cursor: grab;
+            cursor: pointer; /* Cursor de ponteiro para indicar clicável */
+            user-select: none; /* Desabilita seleção de texto */
+            touch-action: none; /* Previne o comportamento padrão de toque (ex: zoom) */
             box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1); /* Sombra mais suave */
             transition: transform 0.15s ease-in-out, box-shadow 0.15s ease-in-out, background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
             font-size: 1.2em;
@@ -165,14 +162,12 @@
             box-sizing: border-box;
         }
 
-        .puzzle-piece:active {
-            cursor: grabbing;
-            transform: scale(1.02); /* Escala menor */
-            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
-        }
-
-        .puzzle-piece.dragging {
-            opacity: 0.7;
+        /* Novo estilo para peça selecionada (point-and-click) */
+        .puzzle-piece.selected {
+            transform: scale(1.05); /* Levemente maior */
+            box-shadow: 0 0 0 3px var(--impa-blue-medium); /* Borda azul para destaque */
+            z-index: 10; /* Garante que fique por cima */
+            position: relative; /* Necessário para z-index */
         }
 
         .puzzle-piece.fixed {
@@ -371,7 +366,6 @@
     </main>
 
     <script>
-        // script.js
         document.addEventListener('DOMContentLoaded', () => {
             const currentNumbersSpan = document.getElementById('current-numbers');
             const gameBoard = document.getElementById('game-board');
@@ -384,8 +378,9 @@
             const currentScoreSpan = document.getElementById('current-score');
 
             let currentProblem = {};
-            let draggedItem = null;
             let score = 0;
+            let selectedPiece = null; // Variável para armazenar a peça selecionada
+            let lastClickedCell = null; // Variável para armazenar a última célula clicada
 
             function updateScoreDisplay() {
                 currentScoreSpan.textContent = score;
@@ -411,7 +406,34 @@
                 return { mdc: currentA, steps: steps, originalA: a, originalB: b };
             }
 
-            // Função para gerar um novo problema (sem resetar a pontuação)
+            // Função auxiliar para mover a peça selecionada para uma célula
+            function moveSelectedPieceToCell(cell) {
+                if (!selectedPiece || !cell || cell.querySelector('.fixed')) {
+                    // Se não há peça selecionada, ou a célula não é válida (fixa), não faz nada
+                    return;
+                }
+
+                // Se a célula já tem uma peça, move-a de volta para o container de peças
+                if (cell.children.length > 0) {
+                    const oldPiece = cell.children[0];
+                    oldPiece.classList.remove('inserted-value', 'inserted-remainder', 'inserted-quotient');
+                    puzzlePiecesContainer.appendChild(oldPiece);
+                }
+                
+                // Move a peça selecionada para a célula
+                cell.appendChild(selectedPiece);
+                selectedPiece.classList.remove('selected'); // Remove o destaque da peça
+
+                // Adiciona a classe de cor correta à peça movida
+                const row = parseInt(cell.dataset.row);
+                if (row === 0) selectedPiece.classList.add('inserted-quotient');
+                else if (row === 1) selectedPiece.classList.add('inserted-value');
+                else if (row === 2) selectedPiece.classList.add('inserted-remainder');
+                
+                selectedPiece = null; // Desseleciona a peça após movê-la
+            }
+
+            // Função para gerar um novo problema
             function generateNewProblem() {
                 const selectedDifficulty = difficultySelect.value;
                 const limits = difficultyLevels[selectedDifficulty];
@@ -423,7 +445,7 @@
                 do {
                     num1 = Math.floor(Math.random() * (limits.max1 - limits.min1 + 1)) + limits.min1;
                     num2 = Math.floor(Math.random() * (limits.max2 - limits.min2 + 1)) + limits.min2;
-                    if (num1 < num2) [num1, num2] = [num2, num2]; // Garante que num1 > num2
+                    if (num1 < num2) [num1, num2] = [num2, num1]; // Garante que num1 > num2
                     
                     problemResult = calculateEuclideanAlgorithm(num1, num2);
                     attempts++;
@@ -442,6 +464,11 @@
                 gameBoard.innerHTML = '';
                 puzzlePiecesContainer.innerHTML = '';
                 messageArea.textContent = '';
+                selectedPiece = null; // Reseta a peça selecionada
+                if (lastClickedCell) { // Remove destaque da célula alvo anterior
+                    lastClickedCell.classList.remove('target');
+                    lastClickedCell = null;
+                }
 
                 const numValueColumns = currentProblem.steps.length + 1; 
                 gameBoard.style.gridTemplateColumns = `100px repeat(${numValueColumns}, 1fr)`;
@@ -486,8 +513,7 @@
                                 const piece = document.createElement('div');
                                 piece.classList.add('puzzle-piece', 'fixed');
                                 piece.textContent = value;
-                                piece.draggable = false;
-                                piece.dataset.value = value;
+                                // Não é draggable nem clicável se for fixo
                                 if (row === 0) piece.classList.add('inserted-quotient');
                                 else if (row === 1) piece.classList.add('inserted-value');
                                 else if (row === 2) piece.classList.add('inserted-remainder');
@@ -498,10 +524,25 @@
                             cell.dataset.correctValue = ''; 
                         }
 
+                        // Adiciona evento de clique para as células do tabuleiro
+                        // Apenas células não fixas e que esperam um valor podem ser alvos
                         if (cell.dataset.correctValue !== '' && !isFixedCell) {
-                            cell.addEventListener('dragover', handleDragOver);
-                            cell.addEventListener('drop', handleDrop);
-                            cell.addEventListener('dragleave', handleDragLeave);
+                            cell.addEventListener('click', function() {
+                                // Remove destaque da célula alvo anterior, se houver
+                                if (lastClickedCell) {
+                                    lastClickedCell.classList.remove('target');
+                                }
+                                
+                                // Se já tem uma peça selecionada, tenta movê-la para esta célula
+                                if (selectedPiece) {
+                                    moveSelectedPieceToCell(cell);
+                                    lastClickedCell = null; // Reseta a célula alvo
+                                } else {
+                                    // Se não tem peça selecionada, esta célula se torna o alvo
+                                    lastClickedCell = cell;
+                                    cell.classList.add('target');
+                                }
+                            });
                         }
                         gameBoard.appendChild(cell);
                     }
@@ -529,7 +570,7 @@
                     const piece = document.createElement('div');
                     piece.classList.add('puzzle-piece');
                     piece.textContent = item.value;
-                    piece.draggable = true;
+                    // Removido draggable = true
                     piece.dataset.value = item.value;
                     piece.dataset.type = item.type;
                     
@@ -537,7 +578,43 @@
                     else if (item.type === 'value') piece.classList.add('inserted-value');
                     else if (item.type === 'remainder') piece.classList.add('inserted-remainder');
 
-                    piece.addEventListener('dragstart', handleDragStart);
+                    // Adiciona evento de clique para selecionar a peça
+                    piece.addEventListener('click', function(e) {
+                        e.stopPropagation(); // Evita que o clique se propague para o body/document
+
+                        // Se esta peça já está selecionada, deseleciona e retorna para o container
+                        if (selectedPiece === piece) {
+                            selectedPiece.classList.remove('selected');
+                            // Se a peça estava em uma célula, remove-a de lá
+                            if (piece.parentNode && piece.parentNode.classList.contains('board-cell')) {
+                                piece.parentNode.removeChild(piece);
+                            }
+                            puzzlePiecesContainer.appendChild(piece); // Retorna para o container
+                            selectedPiece = null;
+                            if (lastClickedCell) { // Remove destaque da célula alvo
+                                lastClickedCell.classList.remove('target');
+                                lastClickedCell = null;
+                            }
+                            return; // Sai da função
+                        }
+                        
+                        // Desseleciona qualquer peça previamente selecionada
+                        if (selectedPiece) {
+                            selectedPiece.classList.remove('selected');
+                        }
+                        
+                        // Seleciona a nova peça
+                        selectedPiece = piece;
+                        piece.classList.add('selected');
+                        
+                        // Se já houver uma célula alvo marcada, move a peça para lá imediatamente
+                        if (lastClickedCell) {
+                            moveSelectedPieceToCell(lastClickedCell);
+                            lastClickedCell.classList.remove('target'); // Remove o destaque
+                            lastClickedCell = null; // Reseta a célula alvo
+                        }
+                    });
+                    
                     puzzlePiecesContainer.appendChild(piece);
                 });
             }
@@ -549,61 +626,8 @@
                 generateNewProblem(); // Chama a função de geração de problema
             }
 
-            function handleDragStart(e) {
-                if (e.target.classList.contains('fixed')) {
-                    e.preventDefault();
-                    return;
-                }
-                draggedItem = e.target;
-                e.dataTransfer.setData('text/plain', e.target.dataset.value);
-                e.dataTransfer.setData('text/type', e.target.dataset.type); 
-                setTimeout(() => {
-                    e.target.classList.add('dragging');
-                }, 0);
-            }
-
-            function handleDragOver(e) {
-                e.preventDefault();
-                if (e.target.classList.contains('board-cell') && e.target.dataset.correctValue !== '') {
-                    if (e.target.querySelector('.fixed')) {
-                        e.dataTransfer.dropEffect = 'none';
-                        return;
-                    }
-                    e.target.classList.add('drag-over');
-                } else if (e.target.id === 'puzzle-pieces-container') {
-                    e.target.classList.add('drag-over');
-                }
-            }
-
-            function handleDragLeave(e) {
-                e.target.classList.remove('drag-over');
-            }
-
-            function handleDrop(e) {
-                e.preventDefault();
-                e.target.classList.remove('drag-over');
-                
-                if (e.target.classList.contains('board-cell') && e.target.dataset.correctValue !== '') {
-                    if (e.target.querySelector('.fixed')) {
-                        return;
-                    }
-
-                    if (e.target.children.length > 0) {
-                        const oldPiece = e.target.children[0];
-                        oldPiece.classList.remove('inserted-value', 'inserted-remainder', 'inserted-quotient');
-                        puzzlePiecesContainer.appendChild(oldPiece);
-                    }
-                    e.target.appendChild(draggedItem);
-                    draggedItem.classList.remove('dragging');
-
-                } 
-                else if (e.target.id === 'puzzle-pieces-container') {
-                    if (draggedItem.parentNode && draggedItem.parentNode.classList.contains('board-cell')) {
-                        puzzlePiecesContainer.appendChild(draggedItem);
-                        draggedItem.classList.remove('dragging');
-                    }
-                }
-            }
+            // Funções de Drag and Drop (REMOVIDAS ou ADAPTADAS para não serem usadas)
+            // handleDragStart, handleDragOver, handleDragLeave, handleDrop não são mais necessárias para point-and-click
 
             function shuffleArray(array) {
                 for (let i = array.length - 1; i > 0; i--) {
@@ -615,29 +639,33 @@
 
             function checkAnswer() {
                 let allCorrect = true;
+                // Seleciona apenas as células que não são rótulos e não contêm peças fixas
                 const cells = gameBoard.querySelectorAll('.board-cell:not(.label):not(:has(.fixed))');
                 
                 cells.forEach(cell => {
                     const expectedValue = String(cell.dataset.correctValue);
                     let actualValue = '';
 
+                    // Se a célula não espera um valor (ex: células vazias no final da linha de resto), considera correta
                     if (expectedValue === '') {
                         cell.classList.remove('incorrect');
                         cell.classList.add('correct');
                         return;
                     }
 
+                    // Verifica se há uma peça na célula e obtém seu valor
                     if (cell.children.length > 0 && cell.children[0].classList.contains('puzzle-piece')) {
                         actualValue = String(cell.children[0].dataset.value);
                     }
 
+                    // Compara o valor atual com o valor esperado
                     if (actualValue === expectedValue) {
                         cell.classList.remove('incorrect');
                         cell.classList.add('correct');
                     } else {
                         cell.classList.remove('correct');
                         cell.classList.add('incorrect');
-                        allCorrect = false;
+                        allCorrect = false; // Marca que há pelo menos um erro
                     }
                 });
 
@@ -661,44 +689,46 @@
             }
 
             function showAnswer() {
-                puzzlePiecesContainer.innerHTML = '';
+                puzzlePiecesContainer.innerHTML = ''; // Limpa o container de peças
                 messageArea.textContent = 'Aqui está a resposta correta.';
                 messageArea.classList.remove('incorrect');
                 messageArea.classList.add('correct');
 
+                // Seleciona todas as células do tabuleiro, exceto os rótulos
                 const cells = gameBoard.querySelectorAll('.board-cell:not(.label)');
                 cells.forEach(cell => {
+                    // Remove qualquer peça existente na célula
                     while (cell.firstChild) {
                         cell.removeChild(cell.firstChild);
                     }
 
                     const expectedValue = String(cell.dataset.correctValue);
-                    if (expectedValue !== '') {
+                    if (expectedValue !== '') { // Se a célula espera um valor
                         const piece = document.createElement('div');
-                        piece.classList.add('puzzle-piece', 'fixed');
+                        piece.classList.add('puzzle-piece', 'fixed'); // Adiciona classe 'fixed'
                         piece.textContent = expectedValue;
-                        piece.draggable = false;
+                        // Não é draggable nem clicável
                         piece.dataset.value = expectedValue;
                         
+                        // Adiciona a classe de cor correta
                         const row = parseInt(cell.dataset.row);
                         if (row === 0) piece.classList.add('inserted-quotient');
                         else if (row === 1) piece.classList.add('inserted-value');
                         else if (row === 2) piece.classList.add('inserted-remainder');
 
-                        cell.appendChild(piece);
+                        cell.appendChild(piece); // Coloca a peça na célula
                     }
-                    cell.classList.remove('correct', 'incorrect');
+                    cell.classList.remove('correct', 'incorrect'); // Remove feedback de cor
                 });
             }
 
+            // Listeners de eventos para os botões e seletor de dificuldade
             checkButton.addEventListener('click', checkAnswer);
             showAnswerButton.addEventListener('click', showAnswer);
             newGameButton.addEventListener('click', startNewGame); // Chama a nova função para resetar e iniciar
             difficultySelect.addEventListener('change', startNewGame); // Também reseta a pontuação ao mudar o nível
 
-            puzzlePiecesContainer.addEventListener('dragover', handleDragOver);
-            puzzlePiecesContainer.addEventListener('drop', handleDrop);
-            puzzlePiecesContainer.addEventListener('dragleave', handleDragLeave);
+            // Removidos os listeners de drag and drop do puzzlePiecesContainer
 
             // Iniciar o primeiro jogo ao carregar a página
             startNewGame();
